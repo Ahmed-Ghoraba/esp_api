@@ -35,16 +35,29 @@ app.get('/api/sensor', (req, res) => {
 // POST /api/sensor to receive data from ESP
 app.post('/api/sensor', (req, res) => {
   try {
-    const { sensorValue, deviceId } = req.body;
-    console.log(`Received data - Device: ${deviceId}, Sensor Value: ${sensorValue}`);
+    const { timestamp, nitrogen, potassium, phosphorus } = req.body;
+
+    // Log received data for debugging
+    console.log('Received POST data:', JSON.stringify(req.body));
+
+    // Use defaults for missing fields to maintain JSON structure
+    const data = {
+      timestamp: timestamp || new Date().toISOString(), // Fallback to current time if timestamp is missing
+      nitrogen: nitrogen !== undefined ? nitrogen : -1.0,
+      potassium: potassium !== undefined ? potassium : -1.0,
+      phosphorus: phosphorus !== undefined ? phosphorus : -1.0
+    };
+
+    console.log(`Processed data - nitrogen: ${data.nitrogen}, phosphorus: ${data.phosphorus}, potassium: ${data.potassium}, timestamp: ${data.timestamp}`);
 
     // Broadcast data to all connected SSE clients
-    const data = `data: ${JSON.stringify({ sensorValue, deviceId, timestamp: new Date().toISOString() })}\n\n`;
+    const sseData = `data: ${JSON.stringify(data)}\n\n`;
     clients.forEach((client) => {
-      client.write(data);
+      client.write(sseData);
     });
 
-    res.status(200).json({ message: 'Data received successfully', data: req.body });
+    // Respond with exact JSON structure
+    res.status(200).json({ message: 'Data received successfully', data });
   } catch (error) {
     console.error('Error processing data:', error);
     res.status(500).json({ error: 'Failed to process data' });
